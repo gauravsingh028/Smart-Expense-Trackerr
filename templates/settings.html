@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width:680px;margin:0 auto">
+
+    <!-- Profile Section -->
+    <div class="panel">
+        <div class="settings-section">
+            <h3>Profile Information</h3>
+            <p>Manage your account details.</p>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" class="form-control" value="{{ user.username }}" disabled>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="text" class="form-control" value="{{ user.email }}" disabled>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>First Name</label>
+                    <input type="text" class="form-control" value="{{ user.first_name|default:'' }}" disabled>
+                </div>
+                <div class="form-group">
+                    <label>Last Name</label>
+                    <input type="text" class="form-control" value="{{ user.last_name|default:'' }}" disabled>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Info -->
+    <div class="panel">
+        <div class="settings-section">
+            <h3>Application Info</h3>
+            <p>Smart Expense Tracker v1.0</p>
+            <ul style="margin:0;padding-left:20px;color:var(--text-secondary);font-size:0.88rem;line-height:2">
+                <li>Built with Django + MongoDB (PyMongo)</li>
+                <li>Charts powered by Chart.js</li>
+                <li>Icons by Lucide</li>
+                <li>Data stored securely in MongoDB</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Data Management -->
+    <div class="panel">
+        <div class="settings-section">
+            <h3>Data Management</h3>
+            <p>Import and export your financial data.</p>
+            <div style="display:flex;gap:12px">
+                <a href="{% url 'import_csv' %}" class="btn btn-outline">
+                    <i data-lucide="upload" style="width:16px;height:16px"></i> Import CSV
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="panel" style="border-color:#fecaca">
+        <div class="settings-section">
+            <h3 style="color:var(--danger)">Danger Zone</h3>
+            <p>Irreversible actions. Proceed with caution.</p>
+            <a href="{% url 'logout' %}" class="btn btn-danger btn-sm">
+                <i data-lucide="log-out" style="width:16px;height:16px"></i> Logout
+            </a>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>lucide.createIcons();</script>
+{% endblock %}

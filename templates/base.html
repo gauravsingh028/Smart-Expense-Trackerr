@@ -1,0 +1,206 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Smart Expense Tracker — Track, analyze and manage your finances with ease.">
+    <title>{% block title %}{{ page_title|default:"Dashboard" }}{% endblock %} — ExpenseTrack</title>
+
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- App CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{% if user.is_authenticated %}
+<!-- ═══════ Sidebar Overlay (mobile) ═══════ -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<div class="app-wrapper">
+    <!-- ═══════ Sidebar ═══════ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">
+                <i data-lucide="wallet" style="width:20px;height:20px"></i>
+            </div>
+            <div>
+                <h1>ExpenseTrack</h1>
+                <span>Finance Dashboard</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section-label">Main Menu</div>
+            <a href="{% url 'dashboard' %}" class="{% if page_title == 'Dashboard' %}active{% endif %}" id="nav-dashboard">
+                <i data-lucide="layout-dashboard"></i> Dashboard
+            </a>
+            <a href="{% url 'transactions' %}" class="{% if page_title == 'All Transactions' %}active{% endif %}" id="nav-transactions">
+                <i data-lucide="list"></i> All Transactions
+            </a>
+            <a href="{% url 'add_expense' %}" class="{% if page_title == 'Add Expense' %}active{% endif %}" id="nav-add-expense">
+                <i data-lucide="plus-circle"></i> Add Expense
+            </a>
+            <a href="{% url 'categories' %}" class="{% if page_title == 'Categories' %}active{% endif %}" id="nav-categories">
+                <i data-lucide="grid-3x3"></i> Categories
+            </a>
+
+            <div class="nav-section-label">Analytics</div>
+            <a href="{% url 'reports' %}" class="{% if page_title == 'Reports & Analytics' %}active{% endif %}" id="nav-reports">
+                <i data-lucide="bar-chart-3"></i> Reports & Analytics
+            </a>
+            <a href="{% url 'import_csv' %}" class="{% if page_title == 'Import Statement' %}active{% endif %}" id="nav-import">
+                <i data-lucide="upload"></i> Import Statement
+            </a>
+
+            <div class="nav-section-label">Preferences</div>
+            <a href="{% url 'settings' %}" class="{% if page_title == 'Settings' %}active{% endif %}" id="nav-settings">
+                <i data-lucide="settings"></i> Settings
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="{% url 'logout' %}" id="nav-logout">
+                <i data-lucide="log-out"></i> Logout
+            </a>
+        </div>
+    </aside>
+
+    <!-- ═══════ Main ═══════ -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="hamburger" onclick="toggleSidebar()" aria-label="Toggle menu">
+                    <i data-lucide="menu" style="width:22px;height:22px"></i>
+                </button>
+                <div>
+                    <h1 class="page-title">{{ page_title|default:"Dashboard" }}</h1>
+                    <ul class="breadcrumb-custom">
+                        <li><a href="{% url 'dashboard' %}">Home</a></li>
+                        {% if page_title != "Dashboard" %}
+                        <li>{{ page_title }}</li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box">
+                    <i data-lucide="search"></i>
+                    <input type="text" placeholder="Search transactions..." id="globalSearch"
+                           onkeydown="if(event.key==='Enter') window.location='/transactions/?search='+this.value">
+                </div>
+
+                <button class="topbar-icon-btn" title="Notifications" id="notif-btn">
+                    <i data-lucide="bell" style="width:18px;height:18px"></i>
+                    <span class="badge-dot"></span>
+                </button>
+
+                <a href="{% url 'add_expense' %}" class="btn-add-expense" id="topbar-add-expense">
+                    <i data-lucide="plus" style="width:16px;height:16px"></i>
+                    <span>Add Expense</span>
+                </a>
+
+                <div class="user-dropdown" id="user-dropdown">
+                    <div class="user-avatar">
+                        {{ user.first_name|default:user.username|truncatechars:1|upper }}
+                    </div>
+                    <div class="user-info">
+                        <span class="name">{{ user.first_name|default:user.username }} {{ user.last_name|default:"" }}</span>
+                        <span class="role">Personal Account</span>
+                    </div>
+                    <i data-lucide="chevron-down" style="width:14px;height:14px;color:var(--text-muted)"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Alerts -->
+        {% if messages %}
+        <div class="alert-stack" id="alertStack">
+            {% for message in messages %}
+            <div class="alert-toast {{ message.tags }}" role="alert">
+                {% if message.tags == 'success' %}
+                    <i data-lucide="check-circle" style="width:18px;height:18px;flex-shrink:0"></i>
+                {% elif message.tags == 'danger' %}
+                    <i data-lucide="alert-circle" style="width:18px;height:18px;flex-shrink:0"></i>
+                {% elif message.tags == 'warning' %}
+                    <i data-lucide="alert-triangle" style="width:18px;height:18px;flex-shrink:0"></i>
+                {% else %}
+                    <i data-lucide="info" style="width:18px;height:18px;flex-shrink:0"></i>
+                {% endif %}
+                <span>{{ message }}</span>
+                <button class="close-alert" onclick="this.parentElement.remove()">×</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Page Content -->
+        <div class="page-content">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+</div>
+
+{% else %}
+    {% block auth_content %}{% endblock %}
+{% endif %}
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-backdrop-custom" id="deleteModal">
+    <div class="modal-content-custom">
+        <h3><i data-lucide="trash-2" style="width:20px;height:20px;color:var(--danger);vertical-align:middle"></i> Delete Expense</h3>
+        <p>Are you sure you want to delete this transaction? This action cannot be undone.</p>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+            <form id="deleteForm" method="post" style="display:inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // Sidebar toggle
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('show');
+        document.getElementById('sidebarOverlay').classList.toggle('show');
+    }
+
+    // Auto-dismiss alerts after 5s
+    setTimeout(() => {
+        document.querySelectorAll('.alert-toast').forEach(el => {
+            el.style.animation = 'slideInRight 0.3s ease reverse forwards';
+            setTimeout(() => el.remove(), 300);
+        });
+    }, 5000);
+
+    // Delete modal
+    function confirmDelete(url) {
+        document.getElementById('deleteForm').action = url;
+        document.getElementById('deleteModal').classList.add('show');
+    }
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.remove('show');
+    }
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

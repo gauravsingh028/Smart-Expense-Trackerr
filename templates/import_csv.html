@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width:840px;margin:0 auto">
+
+    <!-- Upload Panel -->
+    <div class="panel" id="uploadPanel">
+        <div class="panel-header">
+            <h2>Import Bank Statement</h2>
+            <div style="display:flex;gap:6px">
+                <span class="preview-badge valid" style="background:var(--primary-50);color:var(--primary)">
+                    <i data-lucide="file-text" style="width:12px;height:12px"></i> CSV
+                </span>
+                <span class="preview-badge valid" style="background:var(--danger-bg);color:var(--danger)">
+                    <i data-lucide="file" style="width:12px;height:12px"></i> PDF
+                </span>
+                <span class="preview-badge valid" style="background:var(--success-bg);color:#166534">
+                    <i data-lucide="table" style="width:12px;height:12px"></i> Excel
+                </span>
+            </div>
+        </div>
+        <div class="panel-body">
+            {% if not preview and not needs_password %}
+            <form method="post" enctype="multipart/form-data" id="csvUploadForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="preview">
+
+                <label for="csvFileInput" class="upload-zone" id="uploadZone">
+                    <i data-lucide="upload-cloud" style="width:48px;height:48px"></i>
+                    <h3>Upload Your Bank Statement</h3>
+                    <p>Drag & drop or click to select a file</p>
+                    <div style="display:flex;gap:12px;justify-content:center;margin-top:12px">
+                        <span class="preview-badge valid" style="font-size:0.72rem">
+                            <i data-lucide="check" style="width:10px;height:10px"></i> CSV / TXT
+                        </span>
+                        <span class="preview-badge valid" style="font-size:0.72rem">
+                            <i data-lucide="check" style="width:10px;height:10px"></i> PDF
+                        </span>
+                        <span class="preview-badge valid" style="font-size:0.72rem">
+                            <i data-lucide="check" style="width:10px;height:10px"></i> Excel (.xlsx)
+                        </span>
+                    </div>
+                    <p style="font-size:0.72rem;margin-top:10px;color:var(--text-muted)">Max 10 MB • Auto-detects Canara Bank and other Indian bank formats</p>
+                    <input type="file" name="csv_file" id="csvFileInput"
+                           accept=".csv,.txt,.pdf,.xlsx,.xls"
+                           style="display:none" onchange="showLoading(); document.getElementById('csvUploadForm').submit()">
+                </label>
+            </form>
+
+            <!-- Smart Features Info -->
+            <div style="margin-top:28px">
+                <h3 style="font-size:0.95rem;font-weight:700;margin-bottom:16px">
+                    <i data-lucide="sparkles" style="width:16px;height:16px;color:var(--primary);vertical-align:middle"></i>
+                    Smart Import Features
+                </h3>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:16px">
+                        <div style="font-weight:600;font-size:0.85rem;margin-bottom:6px;color:var(--primary)">
+                            <i data-lucide="scan" style="width:14px;height:14px;vertical-align:middle"></i> Auto-Detect Columns
+                        </div>
+                        <p style="font-size:0.78rem;color:var(--text-secondary);margin:0">
+                            Automatically finds Date, Description, Debit, Credit columns regardless of header names.
+                        </p>
+                    </div>
+                    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:16px">
+                        <div style="font-weight:600;font-size:0.85rem;margin-bottom:6px;color:var(--success)">
+                            <i data-lucide="tag" style="width:14px;height:14px;vertical-align:middle"></i> Auto-Categorise
+                        </div>
+                        <p style="font-size:0.78rem;color:var(--text-secondary);margin:0">
+                            Recognises Swiggy, Uber, Amazon, Netflix, and 50+ merchants to categorise expenses.
+                        </p>
+                    </div>
+                    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:16px">
+                        <div style="font-weight:600;font-size:0.85rem;margin-bottom:6px;color:var(--warning)">
+                            <i data-lucide="filter" style="width:14px;height:14px;vertical-align:middle"></i> Expenses Only
+                        </div>
+                        <p style="font-size:0.78rem;color:var(--text-secondary);margin:0">
+                            Automatically skips salary credits, refunds, and income — imports only your spending.
+                        </p>
+                    </div>
+                    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:16px">
+                        <div style="font-weight:600;font-size:0.85rem;margin-bottom:6px;color:var(--danger)">
+                            <i data-lucide="shield-check" style="width:14px;height:14px;vertical-align:middle"></i> Duplicate Detection
+                        </div>
+                        <p style="font-size:0.78rem;color:var(--text-secondary);margin:0">
+                            Fingerprints each transaction so re-uploading the same statement won't create duplicates.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading state (hidden by default) -->
+            <div id="loadingState" style="display:none;text-align:center;padding:32px">
+                <div class="spinner"></div>
+                <p style="color:var(--text-secondary);font-size:0.88rem;margin-top:12px">
+                    Parsing your bank statement...
+                </p>
+            </div>
+
+            {% elif needs_password %}
+            <!-- ═══════ PDF Password Required ═══════ -->
+            <div style="text-align:center;padding:32px 20px">
+                <div style="width:72px;height:72px;border-radius:50%;background:var(--warning-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+                    <i data-lucide="lock" style="width:32px;height:32px;color:var(--warning)"></i>
+                </div>
+                <h3 style="margin-bottom:6px">Password Protected PDF</h3>
+                <p style="color:var(--text-secondary);font-size:0.88rem;margin-bottom:4px">
+                    <strong>{{ filename }}</strong> is encrypted.
+                </p>
+                <p style="color:var(--text-muted);font-size:0.78rem;margin-bottom:24px">
+                    Canara Bank PDFs typically use your account number or date of birth as the password.
+                </p>
+                <form method="post" style="max-width:400px;margin:0 auto">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="password_retry">
+                    <div class="form-group" style="margin-bottom:16px">
+                        <label for="pdf_password" style="text-align:left">PDF Password</label>
+                        <input type="password" name="pdf_password" id="pdf_password"
+                               class="form-control" required autofocus
+                               placeholder="Account number or DOB (e.g. 01011990)">
+                    </div>
+                    <div style="display:flex;gap:12px;justify-content:center">
+                        <a href="{% url 'import_csv' %}" class="btn btn-secondary">
+                            <i data-lucide="x" style="width:16px;height:16px"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="unlock" style="width:16px;height:16px"></i> Unlock & Parse
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {% else %}
+            <!-- ═══════ Preview Results ═══════ -->
+            <div style="margin-bottom:20px">
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+                    <span style="font-size:0.82rem;color:var(--text-secondary)">
+                        <i data-lucide="file" style="width:14px;height:14px;vertical-align:middle"></i>
+                        <strong>{{ filename }}</strong> ({{ file_type }})
+                    </span>
+                    <span class="preview-badge valid">
+                        <i data-lucide="check-circle" style="width:14px;height:14px"></i>
+                        {{ valid_count }} expense{{ valid_count|pluralize }} found
+                    </span>
+                    {% if error_count > 0 %}
+                    <span class="preview-badge invalid">
+                        <i data-lucide="alert-circle" style="width:14px;height:14px"></i>
+                        {{ error_count }} skipped row{{ error_count|pluralize }}
+                    </span>
+                    {% endif %}
+                </div>
+
+                <!-- Auto-categorised transaction count -->
+                {% if preview %}
+                <p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:16px">
+                    <i data-lucide="sparkles" style="width:14px;height:14px;vertical-align:middle;color:var(--primary)"></i>
+                    Transactions auto-categorised by narration keywords and payment method detected.
+                </p>
+                {% endif %}
+            </div>
+
+            {% if errors %}
+            <details style="margin-bottom:16px">
+                <summary style="cursor:pointer;font-size:0.85rem;font-weight:600;color:#991b1b;padding:8px 0">
+                    <i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:middle"></i>
+                    {{ error_count }} row{{ error_count|pluralize }} could not be parsed (click to expand)
+                </summary>
+                <div class="panel" style="margin-top:8px;border-color:#fecaca">
+                    <div class="panel-body" style="max-height:200px;overflow-y:auto;padding:12px 16px">
+                        {% for err in errors %}
+                        <div style="font-size:0.78rem;margin-bottom:6px;padding:6px 0;border-bottom:1px solid var(--border-light)">
+                            <strong>Row {{ err.row }}:</strong> {{ err.errors }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </details>
+            {% endif %}
+
+            {% if preview %}
+            <div class="table-responsive" style="margin-bottom:20px">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Payment Method</th>
+                            <th style="text-align:right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in preview %}
+                        <tr>
+                            <td style="white-space:nowrap">{{ row.date }}</td>
+                            <td style="font-weight:500;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.description }}</td>
+                            <td>
+                                <span class="category-badge" style="background:var(--bg)">{{ row.category }}</span>
+                            </td>
+                            <td>{{ row.payment_method }}</td>
+                            <td class="amount-cell" style="text-align:right">₹{{ row.amount }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if valid_count > 100 %}
+            <p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:16px">
+                Showing first 100 of {{ valid_count }} transactions.
+            </p>
+            {% endif %}
+
+            <div style="display:flex;gap:12px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border-light)">
+                <a href="{% url 'import_csv' %}" class="btn btn-secondary">
+                    <i data-lucide="x" style="width:16px;height:16px"></i> Cancel
+                </a>
+                <form method="post" style="display:inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="import">
+                    <button type="submit" class="btn btn-primary" id="confirm-import-btn">
+                        <i data-lucide="download" style="width:16px;height:16px"></i>
+                        Import {{ valid_count }} Expense{{ valid_count|pluralize }}
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function showLoading() {
+        const zone = document.getElementById('uploadZone');
+        const loading = document.getElementById('loadingState');
+        if (zone) zone.style.display = 'none';
+        if (loading) loading.style.display = 'block';
+    }
+
+    // Drag-and-drop
+    const zone = document.getElementById('uploadZone');
+    if (zone) {
+        ['dragover','dragenter'].forEach(e => zone.addEventListener(e, ev => {
+            ev.preventDefault();
+            zone.style.borderColor = 'var(--primary)';
+            zone.style.background = 'var(--primary-50)';
+        }));
+        ['dragleave','drop'].forEach(e => zone.addEventListener(e, ev => {
+            ev.preventDefault();
+            zone.style.borderColor = '';
+            zone.style.background = '';
+        }));
+        zone.addEventListener('drop', ev => {
+            ev.preventDefault();
+            const input = document.getElementById('csvFileInput');
+            input.files = ev.dataTransfer.files;
+            showLoading();
+            document.getElementById('csvUploadForm').submit();
+        });
+    }
+    lucide.createIcons();
+</script>
+{% endblock %}

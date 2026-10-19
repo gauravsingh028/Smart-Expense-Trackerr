@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Date Filters -->
+<div style="margin-bottom:20px">
+    <div class="date-range-pills">
+        <a href="?range=today" class="{% if preset == 'today' %}active{% endif %}">Today</a>
+        <a href="?range=7days" class="{% if preset == '7days' %}active{% endif %}">Last 7 Days</a>
+        <a href="?range=this_month" class="{% if preset == 'this_month' %}active{% endif %}">This Month</a>
+        <a href="?range=last_month" class="{% if preset == 'last_month' %}active{% endif %}">Last Month</a>
+        <a href="?range=this_year" class="{% if preset == 'this_year' %}active{% endif %}">This Year</a>
+        <a href="?" class="{% if not preset %}active{% endif %}">All Time</a>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-grid">
+    <div class="stat-item">
+        <div class="stat-value">₹{{ stats.total_expenses|floatformat:2|default:"0.00" }}</div>
+        <div class="stat-label">Total Spending</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-value">₹{{ stats.avg_daily|floatformat:2|default:"0.00" }}</div>
+        <div class="stat-label">Average Daily Spending</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-value">{{ stats.top_category }}</div>
+        <div class="stat-label">Highest Spending Category</div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="charts-grid">
+    <!-- Monthly Trends -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Monthly Spending Trends</h2>
+        </div>
+        <div class="panel-body">
+            <div class="chart-container">
+                <canvas id="reportMonthlyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Breakdown -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Category Breakdown</h2>
+        </div>
+        <div class="panel-body">
+            <div class="chart-container">
+                <canvas id="reportCategoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Daily Spending Bar Chart -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>Daily Spending</h2>
+    </div>
+    <div class="panel-body">
+        <div class="chart-container" style="max-height:350px">
+            <canvas id="reportDailyChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Category Breakdown Table -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>Category-wise Breakdown</h2>
+    </div>
+    {% if cat_spending %}
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th style="text-align:right">Amount</th>
+                    <th style="text-align:right">Percentage</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in cat_spending %}
+                <tr>
+                    <td>
+                        <span class="category-badge" style="background:{{ c.color }}18; color:{{ c.color }}">
+                            <span class="dot" style="background:{{ c.color }}"></span>
+                            {{ c.category }}
+                        </span>
+                    </td>
+                    <td class="amount-cell" style="text-align:right">₹{{ c.total|floatformat:2 }}</td>
+                    <td style="text-align:right;color:var(--text-secondary)">
+                        {% widthratio c.total stats.total_expenses 100 %}%
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i data-lucide="bar-chart-3" style="width:48px;height:48px"></i>
+        <h3>No data available</h3>
+        <p>Add some expenses to see your reports.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Month-over-month comparison -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>Month-over-Month</h2>
+    </div>
+    <div class="panel-body">
+        <div style="display:flex;gap:40px;flex-wrap:wrap">
+            <div>
+                <div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:4px">This Month</div>
+                <div style="font-size:1.5rem;font-weight:800">₹{{ stats.month_expenses|floatformat:2|default:"0.00" }}</div>
+            </div>
+            <div>
+                <div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:4px">Change</div>
+                <div style="font-size:1.5rem;font-weight:800;color:{% if stats.month_change_pct != None %}{% if stats.month_change_pct > 0 %}var(--danger){% else %}var(--success){% endif %}{% else %}var(--text-muted){% endif %}">
+                    {% if stats.month_change_pct != None %}
+                        {% if stats.month_change_pct > 0 %}+{% endif %}{{ stats.month_change_pct }}%
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.color = '#6b7280';
+
+    // Monthly Line
+    const monthly = {{ monthly_json|safe }};
+    new Chart(document.getElementById('reportMonthlyChart'), {
+        type: 'line',
+        data: {
+            labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+            datasets: [{
+                label: 'Spending',
+                data: monthly,
+                borderColor: '#6366f1',
+                backgroundColor: 'rgba(99,102,241,0.08)',
+                borderWidth: 2.5,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointBackgroundColor: '#6366f1',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1f2937', padding: 12, cornerRadius: 8, callbacks: { label: ctx => '₹' + ctx.parsed.y.toLocaleString('en-IN', {minimumFractionDigits:2}) } } },
+            scales: { y: { beginAtZero: true, grid: { color: '#f3f4f6' }, ticks: { callback: v => '₹'+(v>=1000?(v/1000).toFixed(0)+'k':v) } }, x: { grid: { display: false } } }
+        }
+    });
+
+    // Category Doughnut
+    const catData = {{ cat_spending_json|safe }};
+    new Chart(document.getElementById('reportCategoryChart'), {
+        type: 'doughnut',
+        data: {
+            labels: catData.map(c => c.category),
+            datasets: [{ data: catData.map(c => c.total), backgroundColor: catData.map(c => c.color), borderWidth: 0, hoverOffset: 8 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '65%',
+            plugins: { legend: { position: 'right', labels: { padding: 16, usePointStyle: true, pointStyle: 'circle', font: { size: 12, weight: '500' } } }, tooltip: { backgroundColor: '#1f2937', padding: 12, cornerRadius: 8 } }
+        }
+    });
+
+    // Daily Bar
+    const daily = {{ daily_json|safe }};
+    new Chart(document.getElementById('reportDailyChart'), {
+        type: 'bar',
+        data: {
+            labels: daily.map(d => d.date),
+            datasets: [{
+                label: 'Spending',
+                data: daily.map(d => d.total),
+                backgroundColor: 'rgba(99,102,241,0.7)',
+                borderRadius: 6,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1f2937', padding: 12, cornerRadius: 8, callbacks: { label: ctx => '₹' + ctx.parsed.y.toLocaleString('en-IN', {minimumFractionDigits:2}) } } },
+            scales: { y: { beginAtZero: true, grid: { color: '#f3f4f6' }, ticks: { callback: v => '₹'+(v>=1000?(v/1000).toFixed(0)+'k':v) } }, x: { grid: { display: false }, ticks: { maxRotation: 45 } } }
+        }
+    });
+
+    lucide.createIcons();
+</script>
+{% endblock %}

@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- ═══════ Greeting ═══════ -->
+<div style="margin-bottom: 24px;">
+    <h2 style="font-size:1.4rem;font-weight:800;margin:0 0 4px">
+        Good {% now "H" as hour %}{% if hour|add:"0" < 12 %}Morning{% elif hour|add:"0" < 17 %}Afternoon{% else %}Evening{% endif %}, {{ user.first_name|default:user.username }}!
+    </h2>
+    <p style="color:var(--text-secondary);margin:0;font-size:0.9rem">Here's your financial overview.</p>
+</div>
+
+<!-- Date range pills -->
+<div style="margin-bottom:20px">
+    <div class="date-range-pills">
+        <a href="?range=today" class="{% if preset == 'today' %}active{% endif %}">Today</a>
+        <a href="?range=7days" class="{% if preset == '7days' %}active{% endif %}">Last 7 Days</a>
+        <a href="?range=this_month" class="{% if preset == 'this_month' %}active{% endif %}">This Month</a>
+        <a href="?range=last_month" class="{% if preset == 'last_month' %}active{% endif %}">Last Month</a>
+        <a href="?range=this_year" class="{% if preset == 'this_year' %}active{% endif %}">This Year</a>
+        <a href="?" class="{% if not preset %}active{% endif %}">All Time</a>
+    </div>
+</div>
+
+<!-- ═══════ Summary Cards ═══════ -->
+<div class="summary-cards">
+    <div class="summary-card">
+        <div class="card-header">
+            <span class="card-label">Total Expenses</span>
+            <div class="card-icon indigo"><i data-lucide="trending-up" style="width:20px;height:20px"></i></div>
+        </div>
+        <div class="card-value" id="stat-total">₹{{ stats.total_expenses|floatformat:2|default:"0.00" }}</div>
+        <div class="card-trend neutral">
+            <i data-lucide="hash" style="width:12px;height:12px"></i>
+            {{ stats.total_count }} transaction{{ stats.total_count|pluralize }}
+        </div>
+    </div>
+
+    <div class="summary-card">
+        <div class="card-header">
+            <span class="card-label">This Month</span>
+            <div class="card-icon green"><i data-lucide="calendar" style="width:20px;height:20px"></i></div>
+        </div>
+        <div class="card-value" id="stat-month">₹{{ stats.month_expenses|floatformat:2|default:"0.00" }}</div>
+        <div class="card-trend {% if stats.month_change_pct != None %}{% if stats.month_change_pct > 0 %}up{% else %}down{% endif %}{% else %}neutral{% endif %}">
+            {% if stats.month_change_pct != None %}
+                {% if stats.month_change_pct > 0 %}
+                    <i data-lucide="trending-up" style="width:12px;height:12px"></i> +{{ stats.month_change_pct }}% vs last month
+                {% else %}
+                    <i data-lucide="trending-down" style="width:12px;height:12px"></i> {{ stats.month_change_pct }}% vs last month
+                {% endif %}
+            {% else %}
+                <i data-lucide="minus" style="width:12px;height:12px"></i> No previous data
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="summary-card">
+        <div class="card-header">
+            <span class="card-label">Average Daily Spending</span>
+            <div class="card-icon amber"><i data-lucide="activity" style="width:20px;height:20px"></i></div>
+        </div>
+        <div class="card-value" id="stat-avg">₹{{ stats.avg_daily|floatformat:2|default:"0.00" }}</div>
+        <div class="card-trend neutral">
+            <i data-lucide="clock" style="width:12px;height:12px"></i> Based on date range
+        </div>
+    </div>
+
+    <div class="summary-card">
+        <div class="card-header">
+            <span class="card-label">Top Category</span>
+            <div class="card-icon red"><i data-lucide="pie-chart" style="width:20px;height:20px"></i></div>
+        </div>
+        <div class="card-value" style="font-size:1.15rem" id="stat-top-cat">{{ stats.top_category }}</div>
+        <div class="card-trend neutral">
+            <i data-lucide="indian-rupee" style="width:12px;height:12px"></i>
+            ₹{{ stats.top_category_amount|floatformat:2|default:"0.00" }}
+        </div>
+    </div>
+</div>
+
+<!-- ═══════ Charts ═══════ -->
+<div class="charts-grid">
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Monthly Spending Trends</h2>
+        </div>
+        <div class="panel-body">
+            <div class="chart-container">
+                <canvas id="monthlyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Spending by Category</h2>
+        </div>
+        <div class="panel-body">
+            <div class="chart-container">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════ Recent Transactions ═══════ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>Recent Transactions</h2>
+        <a href="{% url 'transactions' %}" class="btn btn-sm btn-outline" id="view-all-transactions">
+            View All <i data-lucide="arrow-right" style="width:14px;height:14px"></i>
+        </a>
+    </div>
+
+    {% if recent %}
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Payment Method</th>
+                    <th style="text-align:right">Amount</th>
+                    <th style="text-align:center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exp in recent %}
+                <tr>
+                    <td>{{ exp.date_display }}</td>
+                    <td style="font-weight:500">{{ exp.description }}</td>
+                    <td>
+                        <span class="category-badge" style="background: {{ color_map|default_if_none:"{}"|dictsort:"0" }}{% for k,v in color_map.items %}{% if k == exp.category %}{{ v }}18{% endif %}{% endfor %}; color: {% for k,v in color_map.items %}{% if k == exp.category %}{{ v }}{% endif %}{% endfor %}">
+                            <span class="dot" style="background:{% for k,v in color_map.items %}{% if k == exp.category %}{{ v }}{% endif %}{% endfor %}"></span>
+                            {{ exp.category }}
+                        </span>
+                    </td>
+                    <td>{{ exp.payment_method }}</td>
+                    <td class="amount-cell" style="text-align:right">₹{{ exp.amount_display }}</td>
+                    <td style="text-align:center">
+                        <div class="action-btns" style="justify-content:center">
+                            <a href="{% url 'edit_expense' exp.id %}" class="btn-icon" title="Edit">
+                                <i data-lucide="pencil" style="width:14px;height:14px"></i>
+                            </a>
+                            <button class="btn-icon danger" title="Delete" onclick="confirmDelete('{% url 'delete_expense' exp.id %}')">
+                                <i data-lucide="trash-2" style="width:14px;height:14px"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i data-lucide="inbox" style="width:56px;height:56px"></i>
+        <h3>No transactions yet</h3>
+        <p>Start tracking your expenses to see them here.</p>
+        <a href="{% url 'add_expense' %}" class="btn btn-primary" id="empty-add-expense">
+            <i data-lucide="plus" style="width:16px;height:16px"></i> Add Your First Expense
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Chart.js defaults
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.color = '#6b7280';
+
+    // Monthly Spending Line Chart
+    const monthlyData = {{ monthly_json|safe }};
+    const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    new Chart(document.getElementById('monthlyChart'), {
+        type: 'line',
+        data: {
+            labels: monthLabels,
+            datasets: [{
+                label: 'Spending',
+                data: monthlyData,
+                borderColor: '#6366f1',
+                backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                borderWidth: 2.5,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#6366f1',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1f2937',
+                    titleColor: '#fff',
+                    bodyColor: '#d1d5db',
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: ctx => '₹' + ctx.parsed.y.toLocaleString('en-IN', {minimumFractionDigits:2})
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#f3f4f6' },
+                    ticks: {
+                        callback: v => '₹' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v)
+                    }
+                },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    // Category Doughnut Chart
+    const catData = {{ cat_spending_json|safe }};
+    new Chart(document.getElementById('categoryChart'), {
+        type: 'doughnut',
+        data: {
+            labels: catData.map(c => c.category),
+            datasets: [{
+                data: catData.map(c => c.total),
+                backgroundColor: catData.map(c => c.color),
+                borderWidth: 0,
+                hoverOffset: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        padding: 16,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        font: { size: 12, weight: '500' }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#1f2937',
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: ctx => ctx.label + ': ₹' + ctx.parsed.toLocaleString('en-IN', {minimumFractionDigits:2})
+                    }
+                }
+            }
+        }
+    });
+
+    // Re-initialize lucide after dynamic content
+    lucide.createIcons();
+</script>
+{% endblock %}

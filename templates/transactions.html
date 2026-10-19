@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Filters -->
+<div class="panel" style="margin-bottom:20px">
+    <div class="panel-body" style="padding:16px 24px">
+        <form method="get" action="{% url 'transactions' %}">
+            <div class="filters-bar">
+                <input type="text" name="search" class="form-control" placeholder="Search description..."
+                       value="{{ search }}" id="filter-search">
+
+                <select name="category" class="form-select" id="filter-category">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" {% if cat == category_filter %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+
+                <select name="payment_method" class="form-select" id="filter-payment">
+                    <option value="">All Payment Methods</option>
+                    {% for pm in payment_methods %}
+                    <option value="{{ pm }}" {% if pm == payment_filter %}selected{% endif %}>{{ pm }}</option>
+                    {% endfor %}
+                </select>
+
+                <select name="range" class="form-select" id="filter-range">
+                    <option value="">All Time</option>
+                    <option value="today" {% if preset == 'today' %}selected{% endif %}>Today</option>
+                    <option value="7days" {% if preset == '7days' %}selected{% endif %}>Last 7 Days</option>
+                    <option value="this_month" {% if preset == 'this_month' %}selected{% endif %}>This Month</option>
+                    <option value="last_month" {% if preset == 'last_month' %}selected{% endif %}>Last Month</option>
+                    <option value="this_year" {% if preset == 'this_year' %}selected{% endif %}>This Year</option>
+                    <option value="custom" {% if preset == 'custom' %}selected{% endif %}>Custom Range</option>
+                </select>
+
+                <input type="date" name="start" class="form-control" value="{{ start }}"
+                       id="filter-start" style="{% if preset != 'custom' %}display:none{% endif %}">
+                <input type="date" name="end" class="form-control" value="{{ end }}"
+                       id="filter-end" style="{% if preset != 'custom' %}display:none{% endif %}">
+
+                <button type="submit" class="btn btn-primary btn-sm" id="filter-apply">
+                    <i data-lucide="filter" style="width:14px;height:14px"></i> Apply
+                </button>
+                <a href="{% url 'transactions' %}" class="btn btn-secondary btn-sm" id="filter-clear">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Transactions Table -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>Transactions <span style="color:var(--text-muted);font-weight:400;font-size:0.85rem">({{ total }} total)</span></h2>
+        <a href="{% url 'add_expense' %}" class="btn btn-primary btn-sm" id="add-expense-btn">
+            <i data-lucide="plus" style="width:14px;height:14px"></i> Add Expense
+        </a>
+    </div>
+
+    {% if expenses %}
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Payment Method</th>
+                    <th style="text-align:right">Amount</th>
+                    <th style="text-align:center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exp in expenses %}
+                <tr>
+                    <td style="white-space:nowrap">{{ exp.date_display }}</td>
+                    <td style="font-weight:500">{{ exp.description }}</td>
+                    <td>
+                        <span class="category-badge" style="background: {% for k,v in color_map.items %}{% if k == exp.category %}{{ v }}18{% endif %}{% endfor %}; color: {% for k,v in color_map.items %}{% if k == exp.category %}{{ v }}{% endif %}{% endfor %}">
+                            <span class="dot" style="background:{% for k,v in color_map.items %}{% if k == exp.category %}{{ v }}{% endif %}{% endfor %}"></span>
+                            {{ exp.category }}
+                        </span>
+                    </td>
+                    <td>{{ exp.payment_method }}</td>
+                    <td class="amount-cell" style="text-align:right">₹{{ exp.amount_display }}</td>
+                    <td style="text-align:center">
+                        <div class="action-btns" style="justify-content:center">
+                            <a href="{% url 'edit_expense' exp.id %}" class="btn-icon" title="Edit">
+                                <i data-lucide="pencil" style="width:14px;height:14px"></i>
+                            </a>
+                            <button class="btn-icon danger" title="Delete"
+                                    onclick="confirmDelete('{% url 'delete_expense' exp.id %}')">
+                                <i data-lucide="trash-2" style="width:14px;height:14px"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination-wrapper">
+        <div class="pagination-info">
+            Showing page {{ page }} of {{ total_pages }} ({{ total }} transactions)
+        </div>
+        <div class="pagination-btns">
+            {% if page > 1 %}
+            <a href="?page={{ page|add:"-1" }}&search={{ search }}&category={{ category_filter }}&payment_method={{ payment_filter }}&range={{ preset }}&start={{ start }}&end={{ end }}">
+                <i data-lucide="chevron-left" style="width:14px;height:14px"></i>
+            </a>
+            {% endif %}
+
+            {% for p in pages %}
+                {% if p == page %}
+                <span class="active-page">{{ p }}</span>
+                {% else %}
+                <a href="?page={{ p }}&search={{ search }}&category={{ category_filter }}&payment_method={{ payment_filter }}&range={{ preset }}&start={{ start }}&end={{ end }}">{{ p }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page < total_pages %}
+            <a href="?page={{ page|add:"1" }}&search={{ search }}&category={{ category_filter }}&payment_method={{ payment_filter }}&range={{ preset }}&start={{ start }}&end={{ end }}">
+                <i data-lucide="chevron-right" style="width:14px;height:14px"></i>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <i data-lucide="search" style="width:56px;height:56px"></i>
+        <h3>No transactions found</h3>
+        <p>{% if search or category_filter or payment_filter %}Try adjusting your filters.{% else %}Start by adding your first expense.{% endif %}</p>
+        <a href="{% url 'add_expense' %}" class="btn btn-primary">
+            <i data-lucide="plus" style="width:16px;height:16px"></i> Add Expense
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Show/hide custom date range inputs
+    document.getElementById('filter-range').addEventListener('change', function() {
+        const show = this.value === 'custom';
+        document.getElementById('filter-start').style.display = show ? '' : 'none';
+        document.getElementById('filter-end').style.display = show ? '' : 'none';
+    });
+    lucide.createIcons();
+</script>
+{% endblock %}

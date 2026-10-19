@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+    <!-- Category List -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Your Categories</h2>
+            <span style="font-size:0.82rem;color:var(--text-secondary)">{{ categories|length }} categories</span>
+        </div>
+        {% for cat in categories %}
+        <div class="category-list-item" id="cat-{{ cat.id }}">
+            <div class="cat-info">
+                <span class="cat-color" style="background:{{ cat.color }}"></span>
+                <div>
+                    <div class="cat-name">{{ cat.name }}</div>
+                    <div class="cat-spending">₹{{ cat.spending_display }} spent</div>
+                </div>
+            </div>
+            <div class="cat-actions">
+                <button class="btn-icon" title="Edit"
+                        onclick="editCategory('{{ cat.name }}', '{{ cat.color }}')">
+                    <i data-lucide="pencil" style="width:14px;height:14px"></i>
+                </button>
+                <form method="post" style="display:inline"
+                      onsubmit="return confirm('Delete category \'{{ cat.name }}\'?')">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="name" value="{{ cat.name }}">
+                    <button type="submit" class="btn-icon danger" title="Delete">
+                        <i data-lucide="trash-2" style="width:14px;height:14px"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <p>No categories yet.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Add / Edit Category Form -->
+    <div>
+        <div class="panel">
+            <div class="panel-header">
+                <h2 id="catFormTitle">Add New Category</h2>
+            </div>
+            <div class="panel-body">
+                <form method="post" id="catForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add" id="catAction">
+                    <input type="hidden" name="old_name" value="" id="catOldName">
+
+                    <div class="form-group">
+                        <label for="catName">Category Name *</label>
+                        <input type="text" name="name" id="catName" class="form-control"
+                               required maxlength="100"
+                               placeholder="e.g. Groceries"
+                               pattern="[A-Za-z0-9 &\-]+">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="catColor">Color</label>
+                        <div class="color-picker-wrapper">
+                            <input type="color" name="color" id="catColor" value="#6366f1">
+                            <span id="colorHex" style="font-size:0.82rem;color:var(--text-secondary)">#6366f1</span>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:12px;margin-top:20px">
+                        <button type="submit" class="btn btn-primary" id="catSubmitBtn">
+                            <i data-lucide="plus" style="width:16px;height:16px"></i> Add Category
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="resetCatForm()" style="display:none" id="catCancelBtn">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="panel" style="margin-top:20px">
+            <div class="panel-header">
+                <h2>Tips</h2>
+            </div>
+            <div class="panel-body">
+                <ul style="margin:0;padding-left:20px;color:var(--text-secondary);font-size:0.88rem;line-height:1.8">
+                    <li>Categories help you classify and analyze your spending.</li>
+                    <li>You can rename a category; all linked transactions update automatically.</li>
+                    <li>A category can only be deleted if no transactions use it.</li>
+                    <li>Choose distinctive colors for easy visual identification in charts.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function editCategory(name, color) {
+        document.getElementById('catFormTitle').textContent = 'Edit Category';
+        document.getElementById('catAction').value = 'edit';
+        document.getElementById('catOldName').value = name;
+        document.getElementById('catName').value = name;
+        document.getElementById('catColor').value = color;
+        document.getElementById('colorHex').textContent = color;
+        document.getElementById('catSubmitBtn').innerHTML = '<i data-lucide="save" style="width:16px;height:16px"></i> Save Changes';
+        document.getElementById('catCancelBtn').style.display = '';
+        lucide.createIcons();
+        document.getElementById('catName').focus();
+    }
+
+    function resetCatForm() {
+        document.getElementById('catFormTitle').textContent = 'Add New Category';
+        document.getElementById('catAction').value = 'add';
+        document.getElementById('catOldName').value = '';
+        document.getElementById('catName').value = '';
+        document.getElementById('catColor').value = '#6366f1';
+        document.getElementById('colorHex').textContent = '#6366f1';
+        document.getElementById('catSubmitBtn').innerHTML = '<i data-lucide="plus" style="width:16px;height:16px"></i> Add Category';
+        document.getElementById('catCancelBtn').style.display = 'none';
+        lucide.createIcons();
+    }
+
+    document.getElementById('catColor').addEventListener('input', function() {
+        document.getElementById('colorHex').textContent = this.value;
+    });
+
+    lucide.createIcons();
+</script>
+{% endblock %}
