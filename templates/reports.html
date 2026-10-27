@@ -123,13 +123,21 @@
             </div>
             <div>
                 <div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:4px">Change</div>
-                <div style="font-size:1.5rem;font-weight:800;color:{% if stats.month_change_pct != None %}{% if stats.month_change_pct > 0 %}var(--danger){% else %}var(--success){% endif %}{% else %}var(--text-muted){% endif %}">
-                    {% if stats.month_change_pct != None %}
-                        {% if stats.month_change_pct > 0 %}+{% endif %}{{ stats.month_change_pct }}%
-                    {% else %}
-                        —
-                    {% endif %}
+                {% if stats.month_change_pct != None %}
+                    {% if stats.month_change_pct > 0 %}
+                <div style="font-size:1.5rem;font-weight:800;color:var(--danger)">
+                    +{{ stats.month_change_pct }}%
                 </div>
+                    {% else %}
+                <div style="font-size:1.5rem;font-weight:800;color:var(--success)">
+                    {{ stats.month_change_pct }}%
+                </div>
+                    {% endif %}
+                {% else %}
+                <div style="font-size:1.5rem;font-weight:800;color:var(--text-muted)">
+                    —
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load expense_filters %}
 
 {% block content %}
 <!-- Filters -->
@@ -75,8 +76,8 @@
                     <td style="white-space:nowrap">{{ exp.date_display }}</td>
                     <td style="font-weight:500">{{ exp.description }}</td>
                     <td>
-                        <span class="category-badge" style="background: {% for k,v in color_map.items %}{% if k == exp.category %}{{ v }}18{% endif %}{% endfor %}; color: {% for k,v in color_map.items %}{% if k == exp.category %}{{ v }}{% endif %}{% endfor %}">
-                            <span class="dot" style="background:{% for k,v in color_map.items %}{% if k == exp.category %}{{ v }}{% endif %}{% endfor %}"></span>
+                        <span class="category-badge" style="background: {{ color_map|get_color_bg:exp.category }}; color: {{ color_map|get_color:exp.category }}">
+                            <span class="dot" style="background:{{ color_map|get_color:exp.category }}"></span>
                             {{ exp.category }}
                         </span>
                     </td>

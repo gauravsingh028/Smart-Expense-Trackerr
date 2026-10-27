@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load expense_filters %}
 
 {% block content %}
 <!-- ═══════ Greeting ═══════ -->
@@ -41,7 +42,15 @@
             <div class="card-icon green"><i data-lucide="calendar" style="width:20px;height:20px"></i></div>
         </div>
         <div class="card-value" id="stat-month">₹{{ stats.month_expenses|floatformat:2|default:"0.00" }}</div>
-        <div class="card-trend {% if stats.month_change_pct != None %}{% if stats.month_change_pct > 0 %}up{% else %}down{% endif %}{% else %}neutral{% endif %}">
+        {% if stats.month_change_pct != None %}
+            {% if stats.month_change_pct > 0 %}
+        <div class="card-trend up">
+            {% else %}
+        <div class="card-trend down">
+            {% endif %}
+        {% else %}
+        <div class="card-trend neutral">
+        {% endif %}
             {% if stats.month_change_pct != None %}
                 {% if stats.month_change_pct > 0 %}
                     <i data-lucide="trending-up" style="width:12px;height:12px"></i> +{{ stats.month_change_pct }}% vs last month
@@ -131,8 +140,8 @@
                     <td>{{ exp.date_display }}</td>
                     <td style="font-weight:500">{{ exp.description }}</td>
                     <td>
-                        <span class="category-badge" style="background: {{ color_map|default_if_none:"{}"|dictsort:"0" }}{% for k,v in color_map.items %}{% if k == exp.category %}{{ v }}18{% endif %}{% endfor %}; color: {% for k,v in color_map.items %}{% if k == exp.category %}{{ v }}{% endif %}{% endfor %}">
-                            <span class="dot" style="background:{% for k,v in color_map.items %}{% if k == exp.category %}{{ v }}{% endif %}{% endfor %}"></span>
+                        <span class="category-badge" style="background: {{ color_map|get_color_bg:exp.category }}; color: {{ color_map|get_color:exp.category }}">
+                            <span class="dot" style="background:{{ color_map|get_color:exp.category }}"></span>
                             {{ exp.category }}
                         </span>
                     </td>
