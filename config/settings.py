@@ -1,7 +1,8 @@
 """
 Django settings for expense_tracker project.
 
-Uses SQLite for Django auth/sessions and PyMongo for application data (expenses, categories).
+Uses MongoDB for everything: auth, sessions, and application data.
+No SQLite dependency — works on read-only filesystems (Vercel serverless).
 All sensitive config is loaded from environment variables.
 """
 
@@ -15,8 +16,11 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-me-in-production')
-DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
-ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')]
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
+ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,.vercel.app').split(',')]
+
+# Trust Vercel domains for CSRF
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.getenv('CSRF_TRUSTED_ORIGINS', 'https://*.vercel.app').split(',')]
 
 # ---------- MongoDB (PyMongo) ----------
 MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017')
@@ -24,7 +28,6 @@ MONGODB_DATABASE = os.getenv('MONGODB_DATABASE', 'expense_tracker')
 
 # ---------- Django apps ----------
 INSTALLED_APPS = [
-    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -35,6 +38,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -63,13 +67,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# ---------- SQLite for Django auth/sessions ----------
+# ---------- Database ----------
+# SQLite is NOT used. Auth and sessions are handled by MongoDB.
+# We keep a dummy config so Django internals don't complain.
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': ':memory:',
     }
 }
+
+# ---------- MongoDB auth & sessions ----------
+AUTHENTICATION_BACKENDS = ['expenses.mongo_auth.MongoAuthBackend']
+SESSION_ENGINE = 'expenses.mongo_sessions'
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -88,6 +98,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

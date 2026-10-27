@@ -1,9 +1,14 @@
-"""Authentication views: register, login, logout."""
+"""Authentication views: register, login, logout.
+
+Uses MongoDB for user storage via the mongo_auth module.
+No SQLite dependency.
+"""
 
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
-from django.contrib.auth.models import User
 from django.contrib import messages
+
+from .mongo_auth import create_user, user_exists, MongoUser
 
 
 def register(request):
@@ -29,23 +34,23 @@ def register(request):
             errors.append('Passwords do not match.')
         if len(password1) < 8:
             errors.append('Password must be at least 8 characters.')
-        if User.objects.filter(username=username).exists():
+        if user_exists(username=username):
             errors.append('Username already taken.')
-        if User.objects.filter(email=email).exists():
+        if user_exists(email=email):
             errors.append('Email already registered.')
 
         if errors:
             for e in errors:
                 messages.error(request, e)
         else:
-            user = User.objects.create_user(
+            user = create_user(
                 username=username,
                 email=email,
                 password=password1,
                 first_name=first_name,
                 last_name=last_name,
             )
-            login(request, user)
+            login(request, user, backend='expenses.mongo_auth.MongoAuthBackend')
             messages.success(request, f'Welcome, {first_name or username}!')
             return redirect('dashboard')
 
@@ -61,7 +66,7 @@ def login_view(request):
         password = request.POST.get('password', '')
         user = authenticate(request, username=username, password=password)
         if user is not None:
-            login(request, user)
+            login(request, user, backend='expenses.mongo_auth.MongoAuthBackend')
             next_url = request.GET.get('next', 'dashboard')
             return redirect(next_url)
         else:
