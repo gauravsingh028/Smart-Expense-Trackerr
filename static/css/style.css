@@ -874,59 +874,83 @@ textarea.form-control {
     align-items: center;
     justify-content: center;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 24px;
+    padding: 32px;
 }
 
 .auth-card {
     background: var(--surface);
     border-radius: var(--radius-lg);
-    padding: 40px;
+    padding: 48px 44px;
     width: 100%;
-    max-width: 440px;
+    max-width: 520px;
     box-shadow: var(--shadow-lg);
 }
 
 .auth-card .brand {
     text-align: center;
-    margin-bottom: 32px;
+    margin-bottom: 36px;
 }
 
 .auth-card .brand .icon {
-    width: 52px;
-    height: 52px;
+    width: 64px;
+    height: 64px;
     background: linear-gradient(135deg, var(--primary), var(--primary-700));
-    border-radius: 14px;
+    border-radius: 16px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     color: #fff;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 }
 
 .auth-card .brand h2 {
-    font-size: 1.3rem;
+    font-size: 1.75rem;
     font-weight: 700;
-    margin: 0 0 4px;
+    margin: 0 0 6px;
 }
 
 .auth-card .brand p {
     color: var(--text-secondary);
-    font-size: 0.88rem;
+    font-size: 1rem;
     margin: 0;
 }
 
-.auth-card .form-group { margin-bottom: 18px; }
+.auth-card .form-group { margin-bottom: 22px; }
+
+.auth-card .form-group label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.auth-card .form-control {
+    padding: 12px 14px;
+    font-size: 1rem;
+    border-radius: 10px;
+}
 
 .auth-card .btn-primary {
     width: 100%;
-    padding: 12px;
-    font-size: 0.95rem;
+    padding: 14px;
+    font-size: 1.05rem;
+    border-radius: 10px;
+    margin-top: 8px;
+}
+
+.auth-card .form-row {
+    display: flex;
+    gap: 16px;
+}
+
+.auth-card .form-row .form-group {
+    flex: 1;
 }
 
 .auth-footer {
     text-align: center;
-    margin-top: 20px;
-    font-size: 0.85rem;
+    margin-top: 24px;
+    font-size: 0.95rem;
     color: var(--text-secondary);
 }
 

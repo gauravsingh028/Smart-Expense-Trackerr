@@ -7,9 +7,10 @@ can run on read-only filesystems like Vercel serverless.
 
 import hashlib
 import hmac
-import os
 import secrets
 from datetime import datetime
+
+from bson import ObjectId
 
 from .db import get_db
 
@@ -37,15 +38,30 @@ def _check_password(password, stored):
     return hmac.compare_digest(_hash_password(password, salt), stored)
 
 
+# ──────────────────────── Mock Meta (for Django login()) ──────────
+
+class _MockPk:
+    """Mimics Django's model field pk so login() can call _meta.pk.value_to_string(user)."""
+
+    def value_to_string(self, user):
+        return str(user.pk)
+
+
+class _MockMeta:
+    pk = _MockPk()
+    app_label = 'expenses'
+
+
 # ──────────────────────── MongoUser (duck-types Django User) ──────
 
 class MongoUser:
     """
     Lightweight user object that quacks like Django's User model
-    just enough for templates, login(), and @login_required to work.
+    just enough for templates, login(), @login_required, and signals.
     """
 
     backend = 'expenses.mongo_auth.MongoAuthBackend'
+    _meta = _MockMeta()
 
     def __init__(self, user_doc):
         self._doc = user_doc
@@ -58,6 +74,7 @@ class MongoUser:
         self.is_active = user_doc.get('is_active', True)
         self.is_staff = False
         self.is_superuser = False
+        self.last_login = user_doc.get('last_login')
 
     @property
     def is_authenticated(self):
@@ -69,6 +86,40 @@ class MongoUser:
 
     def get_username(self):
         return self.username
+
+    def get_session_auth_hash(self):
+        """Return a hash for session validation (Django checks this)."""
+        key = self._doc.get('password', '') + self.pk
+        return hashlib.sha256(key.encode('utf-8')).hexdigest()
+
+    def save(self, *args, **kwargs):
+        """
+        Django's user_logged_in signal calls user.save(update_fields=['last_login']).
+        We handle this by updating MongoDB directly.
+        """
+        update_fields = kwargs.get('update_fields', None)
+        if update_fields:
+            update = {}
+            for field in update_fields:
+                update[field] = getattr(self, field, None)
+            if update:
+                get_users_collection().update_one(
+                    {'_id': ObjectId(self.pk)},
+                    {'$set': update},
+                )
+        else:
+            # Full save — update all mutable fields
+            get_users_collection().update_one(
+                {'_id': ObjectId(self.pk)},
+                {'$set': {
+                    'username': self.username,
+                    'email': self.email,
+                    'first_name': self.first_name,
+                    'last_name': self.last_name,
+                    'last_login': self.last_login,
+                    'is_active': self.is_active,
+                }},
+            )
 
     def __str__(self):
         return self.username
@@ -98,7 +149,6 @@ class MongoAuthBackend:
 
     def get_user(self, user_id):
         """Called by Django's session framework to reload user from session."""
-        from bson import ObjectId
         users = get_users_collection()
         try:
             user_doc = users.find_one({'_id': ObjectId(user_id)})
